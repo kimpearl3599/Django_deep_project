@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.test import TestCase
 
 from tabom.models.article import Article
@@ -20,14 +21,41 @@ class TestLikeService(TestCase):
         self.assertEqual(article.id, like.article_id)
 
     def test_a_user_can_like_on_article_only_once(self) -> None:
-        #Given
+        # Given
         user = User.objects.create(name="test")
         article = Article.objects.create(title="test_title")
 
-        #Expect
-        like1 = do_like(user.id, article.id)
-        with self.assertRaises(Exception):
-            pass
-            # raise Exception()
-        like2 = do_like(user.id, article.id)
+        # Expect
+        do_like(user.id, article.id)
+        with self.assertRaises(IntegrityError):
+            do_like(user.id, article.id)
 
+    def test_it_should_raise_exception_when_like_an_user_does_not_exist(self) -> None:
+        # Given
+        invalid_user_id = 9988
+        article = Article.objects.create(title="test_title")
+
+        # Expect
+        with self.assertRaises(IntegrityError):
+            do_like(invalid_user_id, article.id)
+
+    def test_it_should_raise_exception_when_like_an_article_does_not_exist(self) -> None:
+        # Given
+        user = User.objects.create(name="test")
+        invalid_article_id = 9988
+
+        # Expect
+        with self.assertRaises(IntegrityError):
+            do_like(user.id, invalid_article_id)
+
+    def test_like_count_should_increase(self) -> None:
+        # Given
+        user = User.objects.create(name="test")
+        article = Article.objects.create(title="test_title")
+
+        # When
+        do_like(user.id, article.id)
+
+        # Then
+        article = Article.objects.get(id=article.id)
+        self.assertEqual(1, article.like_set.count())
